@@ -1,11 +1,12 @@
 """API for fetching WetterOnline data."""
 
-import ast
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import html
 from typing import Any, Final
 from zoneinfo import ZoneInfo
+import json
+import re
 
 from aiohttp import ClientSession
 import bs4
@@ -102,16 +103,28 @@ class WeatherUtils:
             "windDirectionShortSector": "windDirection",
         }
         for script in scripts:
-            script = str(script).split("({")[1].split("})")[0].strip().replace(" ", "")
-            hourly_data_raw = []
-            for entry in script.split("\n"):
-                key = entry.split(":")[0]
-                value = entry.split(":")[1]
-                key = replace_keys.get(key, key)
-                hourly_data_raw.append(f'"{key}": {value}')
-            hourly_data = ast.literal_eval("{" + "".join(hourly_data_raw) + "}")
+            # 1) JS-Text isolieren
+            js_block = str(script).split("({")[1].split("})")[0]
 
-            ## delete useless key
+            hourly_data_raw: list[str] = []
+            # 2) Jetzt auf js_block iterieren
+            for entry in js_block.split("\n"):
+                if ":" not in entry:
+                    continue
+
+                key, value = entry.split(":", 1)
+                key = replace_keys.get(key.strip(), key.strip())
+                value = value.strip().rstrip(",;")
+
+                if value not in {"true", "false", "null"} and not re.fullmatch(
+                    r"-?\d+(?:[.,]\d+)?", value
+                ):
+                    value = json.dumps(value.strip('"'))   # Strings quoten
+
+                hourly_data_raw.append(f'"{key}": {value}')
+
+            hourly_json = "{" + ", ".join(hourly_data_raw) + "}"
+            hourly_data = json.loads(hourly_json)
             hourly_data.pop("docrootVersion", None)
 
             daySynonym = hourly_data["daySynonym"]
