@@ -114,9 +114,12 @@ async def test_reconfigure_changes_location_and_registry_ids(hass: HomeAssistant
         config_entry_id=entry.entry_id, identifiers={(DOMAIN, "10518")}
     )
 
-    with patch(
-        "custom_components.wetteronline.wetteronline_api.WetterOnline.async_get_weather",
-        new=AsyncMock(return_value=sample_data()),
+    with (
+        patch(
+            "custom_components.wetteronline.wetteronline_api.WetterOnline.async_get_weather",
+            new=AsyncMock(return_value=sample_data()),
+        ),
+        patch.object(hass.config_entries, "async_reload", new=AsyncMock(return_value=True)),
     ):
         result = await hass.config_entries.flow.async_init(
             DOMAIN,
@@ -126,6 +129,7 @@ async def test_reconfigure_changes_location_and_registry_ids(hass: HomeAssistant
             },
             data={CONF_LOCATION: "/wetter/berlin"},
         )
+        await hass.async_block_till_done()
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "reconfigure_successful"
