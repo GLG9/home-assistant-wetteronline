@@ -1,53 +1,68 @@
-"""The WetterOnline component."""
+"""WetterOnline Home Assistant integration."""
 
 from __future__ import annotations
-
-import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import CONF_URL_WETTERONLINE, UPDATE_INTERVAL_WETTERONLINE
+from .const import CONF_LOCATION, CONF_LOCATION_ID, CONF_URL_WETTERONLINE, DOMAIN
 from .coordinator import WeatherOnlineDataUpdateCoordinator
 from .wetteronline_api import WetterOnline
 
-_LOGGER = logging.getLogger(__name__)
-
-PLATFORMS = [Platform.WEATHER]
-
+PLATFORMS = [Platform.WEATHER, Platform.SENSOR, Platform.BINARY_SENSOR, Platform.CAMERA]
 
 type WetterOnlineConfigEntry = ConfigEntry[WeatherOnlineDataUpdateCoordinator]
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: WetterOnlineConfigEntry
-) -> bool:
-    """Set up WetterOnline as config entry."""
-    url: str = entry.data[CONF_URL_WETTERONLINE]
-    name: str = entry.data[CONF_NAME]
-
-    _LOGGER.debug("Using url: %s", url)
-
-    websession = async_get_clientsession(hass)
-    wetteronline = WetterOnline(websession, url)
-
-    coordinator = WeatherOnlineDataUpdateCoordinator(
-        hass, wetteronline, name, UPDATE_INTERVAL_WETTERONLINE
-    )
-
+async def async_setup_entry(hass: HomeAssistant, entry: WetterOnlineConfigEntry) -> bool:
+    """Set up WetterOnline from a config entry."""
+    client = WetterOnline(async_get_clientsession(hass), entry.data[CONF_LOCATION])
+    coordinator = WeatherOnlineDataUpdateCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()
-
     entry.runtime_data = coordinator
-
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
     return True
 
 
-async def async_unload_entry(
-    hass: HomeAssistant, entry: WetterOnlineConfigEntry
-) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: WetterOnlineConfigEntry) -> bool:
     """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate the original name/url schema to a stable location id."""
+    if entry.version >= 2:
+        return True
+    path = entry.data.get(CONF_URL_WETTERONLINE) or entry.data.get(CONF_LOCATION)
+    if not path:
+        return False
+    old_name = str(entry.data.get(CONF_NAME) or entry.title)
+    client = WetterOnline(async_get_clientsession(hass), path)
+    data = await client.async_get_weather()
+
+    entity_registry = er.async_get(hass)
+    old_weather_entity_id = entity_registry.async_get_entity_id(Platform.WEATHER, DOMAIN, old_name)
+    if old_weather_entity_id:
+        entity_registry.async_update_entity(
+            old_weather_entity_id, new_unique_id=f"{data.location.gid}_weather"
+        )
+
+    device_registry = dr.async_get(hass)
+    old_device = device_registry.async_get_device(identifiers={(DOMAIN, old_name)})
+    if old_device:
+        device_registry.async_update_device(
+            old_device.id, new_identifiers={(DOMAIN, data.location.gid)}
+        )
+
+    hass.config_entries.async_update_entry(
+        entry,
+        data={CONF_LOCATION: data.location.path, CONF_LOCATION_ID: data.location.gid},
+        title=data.location.name or entry.data.get(CONF_NAME, entry.title),
+        unique_id=data.location.gid,
+        version=2,
+    )
+    return True

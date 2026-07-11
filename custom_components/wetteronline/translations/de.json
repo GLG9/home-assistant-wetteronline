@@ -1,0 +1,46 @@
+{
+  "config": {
+    "step": {
+      "user": {"title": "WetterOnline hinzufügen", "description": "Gib Stadt, Postleitzahl, WetterOnline-Pfad oder eine vollständige WetterOnline-URL ein.", "data": {"location": "Ort oder WetterOnline-URL"}},
+      "select": {"title": "Ort auswählen", "description": "Es wurden mehrere passende WetterOnline-Orte gefunden.", "data": {"location_id": "Ort"}},
+      "reconfigure": {"title": "WetterOnline-Ort ändern", "data": {"location": "Ort oder WetterOnline-URL"}}
+    },
+    "error": {"cannot_connect": "Verbindung zu WetterOnline fehlgeschlagen.", "invalid_location": "Für diesen Ort wurden keine gültigen WetterOnline-Daten gefunden."},
+    "abort": {"already_configured": "Dieser WetterOnline-Ort ist bereits eingerichtet.", "unique_id_mismatch": "Der gewählte Ort stimmt nicht mit dem eingerichteten Ort überein.", "reconfigure_successful": "Der WetterOnline-Ort wurde aktualisiert."}
+  },
+  "entity": {
+    "binary_sensor": {"weather_warning": {"name": "Wetterwarnung"}},
+    "camera": {
+      "weather_radar": {"name": "Wetterradar"},
+      "weather_radar_animation": {"name": "Wetterradar-Animation"}
+    },
+    "sensor": {
+      "condition": {"name": "Wetterzustand"}, "weather_symbol": {"name": "Wettersymbol"},
+      "temperature": {"name": "Temperatur"}, "apparent_temperature": {"name": "Gefühlte Temperatur"},
+      "dew_point": {"name": "Taupunkt"}, "humidity": {"name": "Luftfeuchtigkeit"},
+      "pressure": {"name": "Luftdruck"}, "pressure_tendency": {"name": "Luftdrucktendenz"},
+      "wind_speed": {"name": "Windgeschwindigkeit"}, "wind_gust": {"name": "Windböen"}, "wind_bearing": {"name": "Windrichtung"},
+      "visibility": {"name": "Sichtweite"}, "precipitation_type": {"name": "Niederschlagsart"},
+      "precipitation_probability": {"name": "Niederschlagswahrscheinlichkeit"}, "uv_index": {"name": "UV-Index"},
+      "solar_elevation": {"name": "Sonnenhöhe"}, "smog_level": {"name": "Smog-Stufe"},
+      "convection_probability": {"name": "Gewitterwahrscheinlichkeit"}, "sunshine_duration": {"name": "Sonnenscheindauer"},
+      "warning_count": {"name": "Warnungsanzahl"}, "forecast_text": {"name": "Wettertext"},
+      "editorial": {"name": "Redaktionelle Meldung"},
+      "pollen_ambrosia": {"name": "Pollen Ambrosia"}, "pollen_ampfer": {"name": "Pollen Ampfer"},
+      "pollen_beifuss": {"name": "Pollen Beifuß"}, "pollen_birke": {"name": "Pollen Birke"},
+      "pollen_buche": {"name": "Pollen Buche"}, "pollen_eiche": {"name": "Pollen Eiche"},
+      "pollen_erle": {"name": "Pollen Erle"}, "pollen_esche": {"name": "Pollen Esche"},
+      "pollen_graeser": {"name": "Pollen Gräser"}, "pollen_pappel": {"name": "Pollen Pappel"},
+      "pollen_roggen": {"name": "Pollen Roggen"}, "pollen_ulme": {"name": "Pollen Ulme"},
+      "pollen_wegerich": {"name": "Pollen Wegerich"}, "pollen_weide": {"name": "Pollen Weide"},
+      "sunrise": {"name": "Sonnenaufgang"}, "sunset": {"name": "Sonnenuntergang"}, "day_length": {"name": "Tageslänge"},
+      "moonrise": {"name": "Mondaufgang"}, "moonset": {"name": "Monduntergang"}, "moon_age": {"name": "Mondalter"},
+      "water_temperature": {"name": "Wassertemperatur"},
+      "water_air_temperature": {"name": "Lufttemperatur am Gewässer"},
+      "water_uv_index": {"name": "UV-Index am Gewässer"},
+      "water_wind_speed": {"name": "Wind am Gewässer"},
+      "water_wind_gust": {"name": "Windböen am Gewässer"},
+      "water_wind_bearing": {"name": "Windrichtung am Gewässer"}
+    }
+  }
+}

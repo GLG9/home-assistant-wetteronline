@@ -18,5 +18,10 @@ async def async_get_config_entry_diagnostics(
 
     return {
         "config_entry_data": config_entry.data,
-        "observation_data": coordinator.data,
+        "parser": {
+            "status": "ok" if coordinator.last_update_success else "update_failed",
+            "fetched_at": coordinator.data.fetched_at.isoformat(),
+            "canonical_url": coordinator.client.complete_url,
+        },
+        "normalized_data": coordinator.data.as_dict(),
     }

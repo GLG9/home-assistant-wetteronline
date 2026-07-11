@@ -1,39 +1,43 @@
-# wetteronline
+# WetterOnline for Home Assistant
 
-Home Assistant integration for data from **wetteronline.de**
-
-> **⚠️ This project is currently not under active development.**
-> Bug‑fix or maintenance pull requests are still welcome.
+Unofficial Home Assistant integration for the freely accessible location pages on
+[WetterOnline](https://www.wetteronline.de/). No account or API key is required.
 
 ## Features
 
-* Live observations plus hourly and daily forecasts from wetteronline.de
-* Easy setup via **Config Flow** in the UI or traditional `configuration.yaml`.
-* Compatible with HACS (add as Custom Repository) for hassle‑free updates.
-* Fully typed code‑base and `manifest.json` with a `version` key (mandatory since Home Assistant 2023.6).
+- UI setup using a city, postal code, WetterOnline path, or complete URL
+- Multiple locations and reconfiguration from Devices & Services
+- Current conditions plus 49-hour and 14-day forecasts
+- Sensors for temperature, apparent temperature, dew point, pressure, humidity,
+  wind, gusts, visibility, precipitation, UV, sunshine, smog and raw weather symbols
+- Pollen, warnings, sun/moon, forecast text, editorial and nearby water data
+- Current and animated, location-centred WetterOnline rain radar cameras
+- Diagnostics and migration from the original 1.x config entry format
+
+WetterOnline does not publish a supported public API. The integration reads the
+structured JSON embedded in the public website and may require maintenance after
+site changes. It polls every 15 minutes and does not access membership-only data.
 
 ## Installation
 
-1. Open **HACS** → *Integrations* → “⁝” → **Custom repositories**.
-2. Add the URL of this repository and choose *Category* **Integration**.
-3. Install the component and restart Home Assistant.
-4. Go to *Settings* → **Devices & Services** and select **WetterOnline**.
+Install as a HACS custom repository or copy `custom_components/wetteronline` to the
+matching directory in your Home Assistant configuration, restart Home Assistant,
+then choose **Settings → Devices & services → Add integration → WetterOnline**.
 
-*(Alternatively, copy the `custom_components/wetteronline` folder manually into your configuration directory and restart Home Assistant.)*
+Enter `Berlin`, `10115`, `/wetter/berlin`, or a complete WetterOnline location URL.
+When a search is ambiguous, Home Assistant displays the matching locations.
 
-## Configuration
+## Development
 
-### UI (Config Flow)
+```bash
+uv sync --dev
+uv run ruff check .
+uv run pytest
+```
 
-Just enter the path part from wetteronline.de, e.g. `wetter/Berlin`.
-
-## Known limitations
-
-* WetterOnline does not provide an official public API; **DOM changes on the website can break the scraper**.
-* Works only for locations available under the `wetter/<City>` path (Germany).
-* No precipitation radar — you can embed the official radar as an iframe card instead.
-
+The radar uses WetterOnline precipitation layers over © OpenStreetMap contributors.
+All weather data is attributed to WetterOnline.
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [LICENSE](LICENSE).

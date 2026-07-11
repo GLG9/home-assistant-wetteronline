@@ -1,30 +1,15 @@
-"""Support for the WetterOnline service."""
+"""Weather entity for WetterOnline."""
 
 from __future__ import annotations
 
-from datetime import UTC
-from typing import cast
+from typing import Any, cast, override
 
 from homeassistant.components.weather import (
-    ATTR_FORECAST_CLOUD_COVERAGE,
-    ATTR_FORECAST_CONDITION,
-    ATTR_FORECAST_HUMIDITY,
-    ATTR_FORECAST_NATIVE_APPARENT_TEMP,
-    ATTR_FORECAST_NATIVE_PRECIPITATION,
-    ATTR_FORECAST_NATIVE_TEMP,
-    ATTR_FORECAST_NATIVE_TEMP_LOW,
-    ATTR_FORECAST_NATIVE_WIND_GUST_SPEED,
-    ATTR_FORECAST_NATIVE_WIND_SPEED,
-    ATTR_FORECAST_PRECIPITATION_PROBABILITY,
-    ATTR_FORECAST_TIME,
-    ATTR_FORECAST_UV_INDEX,
-    ATTR_FORECAST_WIND_BEARING,
     Forecast,
     SingleCoordinatorWeatherEntity,
     WeatherEntityFeature,
 )
 from homeassistant.const import (
-    CONF_NAME,
     UnitOfLength,
     UnitOfPrecipitationDepth,
     UnitOfPressure,
@@ -32,117 +17,166 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import WetterOnlineConfigEntry
-from .const import SYMBOLTEXT_CONDITION_MAP
-from .coordinator import WeatherOnlineDataUpdateCoordinator
+from .const import map_condition
+from .coordinator import WeatherOnlineDataUpdateCoordinator, WetterOnlineEntityMixin
 
-PARALLEL_UPDATES = 1
+
+def _temperature(value: Any, key: str = "celsius") -> float | None:
+    if isinstance(value, dict):
+        value = value.get(key)
+    try:
+        return float(value)
+    except TypeError, ValueError:
+        return None
+
+
+def _wind(value: dict[str, Any], key: str = "value") -> float | None:
+    try:
+        return float(value["speed"]["kilometer_per_hour"][key])
+    except KeyError, TypeError, ValueError:
+        return None
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: WetterOnlineConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Add a WetterOnline weather entity from a config_entry."""
-    async_add_entities([WetterOnlineEntity(entry.runtime_data, entry.data[CONF_NAME])])
+    """Set up the weather entity."""
+    async_add_entities([WetterOnlineWeather(entry.runtime_data)])
 
 
-class WetterOnlineEntity(
-    SingleCoordinatorWeatherEntity[WeatherOnlineDataUpdateCoordinator]
+class WetterOnlineWeather(
+    WetterOnlineEntityMixin,
+    SingleCoordinatorWeatherEntity[WeatherOnlineDataUpdateCoordinator],
 ):
-    """Define an WetterOnline entity."""
+    """Current conditions and forecasts."""
 
-    _attr_has_entity_name = True
     _attr_name = None
+    _attr_native_precipitation_unit = UnitOfPrecipitationDepth.MILLIMETERS
+    _attr_native_pressure_unit = UnitOfPressure.HPA
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_visibility_unit = UnitOfLength.METERS
+    _attr_native_wind_speed_unit = UnitOfSpeed.KILOMETERS_PER_HOUR
+    _attr_supported_features = (
+        WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
+    )
 
-    def __init__(
-        self, coordinator: WeatherOnlineDataUpdateCoordinator, name: str
-    ) -> None:
-        """Initialize."""
+    def __init__(self, coordinator: WeatherOnlineDataUpdateCoordinator) -> None:
         super().__init__(coordinator)
-
-        self._attr_native_precipitation_unit = UnitOfPrecipitationDepth.MILLIMETERS
-        self._attr_native_pressure_unit = UnitOfPressure.HPA
-        self._attr_native_temperature_unit = UnitOfTemperature.CELSIUS
-        self._attr_native_visibility_unit = UnitOfLength.KILOMETERS
-        self._attr_native_wind_speed_unit = UnitOfSpeed.KILOMETERS_PER_HOUR
-        self._attr_unique_id = name
+        self._attr_unique_id = f"{coordinator.data.location.gid}_weather"
         self._attr_device_info = coordinator.device_info
-        self._attr_supported_features = (
-            WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
-        )
-        self.coordinator: WeatherOnlineDataUpdateCoordinator = coordinator
 
     @property
+    def _current(self) -> dict[str, Any]:
+        return self.coordinator.data.current
+
+    @property
+    @override
     def condition(self) -> str | None:
-        """Return the current condition."""
-        return _map_symbol_to_condition(
-            self.coordinator.data.current_observations["symbol"]
-        )
+        return map_condition(self._current.get("symbol"))
 
     @property
-    def native_temperature(self) -> float:
-        """Return the temperature."""
-        return cast(float, self.coordinator.data.current_observations["temperature"])
+    @override
+    def native_temperature(self) -> float | None:
+        return _temperature(self._current.get("air_temperature"))
+
+    @property
+    @override
+    def native_apparent_temperature(self) -> float | None:
+        return _temperature(self._current.get("apparent_temperature"))
+
+    @property
+    @override
+    def native_dew_point(self) -> float | None:
+        return _temperature(self._current.get("dew_point"))
+
+    @property
+    @override
+    def humidity(self) -> float | None:
+        value = self._current.get("humidity")
+        return round(float(value) * 100, 1) if value is not None else None
+
+    @property
+    @override
+    def native_pressure(self) -> float | None:
+        return _temperature(self._current.get("air_pressure"), "hpa")
+
+    @property
+    @override
+    def native_wind_speed(self) -> float | None:
+        return _wind(self._current.get("wind") or {})
+
+    @property
+    @override
+    def native_wind_gust_speed(self) -> float | None:
+        return _wind(self._current.get("wind") or {}, "max_gust")
+
+    @property
+    @override
+    def wind_bearing(self) -> float | None:
+        value = (self._current.get("wind") or {}).get("direction")
+        return float(value) if value is not None else None
+
+    @property
+    @override
+    def native_visibility(self) -> float | None:
+        for item in self.coordinator.data.hourly:
+            value = (item.get("visibility") or {}).get("meter")
+            if value is not None:
+                return float(value)
+        return None
 
     @callback
-    def _async_forecast_daily(self) -> list[Forecast] | None:
-        """Return the daily forecast in native units."""
-        return [
-            {
-                ATTR_FORECAST_TIME: item["datetime"].astimezone(UTC).isoformat(),
-                ATTR_FORECAST_NATIVE_TEMP: item["maxTemperature"],
-                ATTR_FORECAST_NATIVE_TEMP_LOW: item["minTemperature"],
-                ATTR_FORECAST_PRECIPITATION_PROBABILITY: item[
-                    "precipitationProbability"
-                ],
-                # ATTR_FORECAST_CONDITION: _map_symbol_to_condition(item["symbolText"]),
-                # ATTR_FORECAST_CLOUD_COVERAGE: item["CloudCoverDay"],
-                # ATTR_FORECAST_HUMIDITY: item["RelativeHumidityDay"]["Average"],
-                # ATTR_FORECAST_NATIVE_APPARENT_TEMP: item["RealFeelTemperatureMax"][
-                #     ATTR_VALUE
-                # ],
-                # ATTR_FORECAST_NATIVE_PRECIPITATION: item["TotalLiquidDay"][ATTR_VALUE],
-                # ATTR_FORECAST_NATIVE_WIND_SPEED: item["WindDay"][ATTR_SPEED][
-                #     ATTR_VALUE
-                # ],
-                # ATTR_FORECAST_NATIVE_WIND_GUST_SPEED: item["WindGustDay"][ATTR_SPEED][
-                #     ATTR_VALUE
-                # ],
-                # ATTR_FORECAST_UV_INDEX: item["UVIndex"][ATTR_VALUE],
-                # ATTR_FORECAST_WIND_BEARING: item["WindDay"][ATTR_DIRECTION]["Degrees"],
-            }
-            for item in self.coordinator.data.daily_forecast
-        ]
+    @override
+    def _async_forecast_hourly(self) -> list[Forecast]:
+        return [self._hourly(item) for item in self.coordinator.data.hourly]
 
     @callback
-    def _async_forecast_hourly(self) -> list[Forecast] | None:
-        """Return the hourly forecast in native units."""
-        return [
-            {
-                ATTR_FORECAST_TIME: item["datetime"].astimezone(UTC).isoformat(),
-                ATTR_FORECAST_CONDITION: _map_symbol_to_condition(item["symbolText"]),
-                ATTR_FORECAST_NATIVE_TEMP: item["temperature"],
-                ATTR_FORECAST_NATIVE_APPARENT_TEMP: item["apparentTemperature"],
-                ATTR_FORECAST_HUMIDITY: item["humidity"],
-                # ATTR_FORECAST_CLOUD_COVERAGE: item["CloudCover"],
-                # ATTR_FORECAST_NATIVE_PRECIPITATION: item["TotalLiquid"][ATTR_VALUE],
-                # ATTR_FORECAST_PRECIPITATION_PROBABILITY: item[
-                #     "PrecipitationProbability"
-                # ],
-                # ATTR_FORECAST_NATIVE_WIND_SPEED: item["Wind"][ATTR_SPEED][ATTR_VALUE],
-                # ATTR_FORECAST_NATIVE_WIND_GUST_SPEED: item["WindGust"][ATTR_SPEED][
-                #     ATTR_VALUE
-                # ],
-                # ATTR_FORECAST_UV_INDEX: item["UVIndex"],
-                # ATTR_FORECAST_WIND_BEARING: item["Wind"][ATTR_DIRECTION]["Degrees"],
-            }
-            for item in self.coordinator.data.hourly_forecast
-        ]
+    @override
+    def _async_forecast_daily(self) -> list[Forecast]:
+        return [self._daily(item) for item in self.coordinator.data.daily]
 
+    @staticmethod
+    def _hourly(item: dict[str, Any]) -> Forecast:
+        precipitation = item.get("precipitation") or {}
+        result: dict[str, Any] = {
+            "datetime": item["date"],
+            "condition": map_condition(item.get("symbol")),
+            "native_temperature": _temperature(item.get("air_temperature")),
+            "native_apparent_temperature": _temperature(item.get("apparent_temperature")),
+            "humidity": round(float(item["humidity"]) * 100, 1)
+            if item.get("humidity") is not None
+            else None,
+            "precipitation_probability": round(float(precipitation.get("probability", 0)) * 100),
+            "native_wind_speed": _wind(item.get("wind") or {}),
+            "native_wind_gust_speed": _wind(item.get("wind") or {}, "max_gust"),
+            "wind_bearing": (item.get("wind") or {}).get("direction"),
+        }
+        return cast(Forecast, {key: value for key, value in result.items() if value is not None})
 
-def _map_symbol_to_condition(symbol: str) -> str:
-    return SYMBOLTEXT_CONDITION_MAP.get(symbol, symbol)
+    @staticmethod
+    def _daily(item: dict[str, Any]) -> Forecast:
+        temperature = item.get("air_temperature") or {}
+        apparent = item.get("apparent_temperature") or {}
+        precipitation = item.get("precipitation") or {}
+        uv = item.get("uv_index") or {}
+        result: dict[str, Any] = {
+            "datetime": item["date"],
+            "condition": map_condition(item.get("symbol")),
+            "native_temperature": _temperature(temperature.get("max")),
+            "native_templow": _temperature(temperature.get("min")),
+            "native_apparent_temperature": _temperature(apparent.get("max")),
+            "humidity": round(float(item["humidity"]) * 100, 1)
+            if item.get("humidity") is not None
+            else None,
+            "precipitation_probability": round(float(precipitation.get("probability", 0)) * 100),
+            "native_wind_speed": _wind(item.get("wind") or {}),
+            "native_wind_gust_speed": _wind(item.get("wind") or {}, "max_gust"),
+            "wind_bearing": (item.get("wind") or {}).get("direction"),
+            "uv_index": uv.get("value"),
+        }
+        return cast(Forecast, {key: value for key, value in result.items() if value is not None})

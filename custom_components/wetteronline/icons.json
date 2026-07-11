@@ -1,0 +1,9 @@
+{
+  "services": {},
+  "entity": {
+    "camera": {
+      "weather_radar": {"default": "mdi:radar"},
+      "weather_radar_animation": {"default": "mdi:radar"}
+    }
+  }
+}

@@ -2,15 +2,85 @@
   "config": {
     "step": {
       "user": {
-        "data": {
-          "name": "[%key:common::config_flow::data::name%]",
-          "url_wetteronline": "Your URL from wetteronline.de e.g. /wetter/warschau or /?gid=12415&lat=51.04&locationname=Piekary&lon=16.43&pcid=pc_city_weather&pid=p_city_weather"
-        }
+        "title": "Add WetterOnline",
+        "description": "Enter a city, postal code, WetterOnline path, or complete WetterOnline URL.",
+        "data": {"location": "Location or WetterOnline URL"}
+      },
+      "select": {
+        "title": "Select location",
+        "description": "Several matching WetterOnline locations were found.",
+        "data": {"location_id": "Location"}
+      },
+      "reconfigure": {
+        "title": "Change WetterOnline location",
+        "data": {"location": "Location or WetterOnline URL"}
       }
     },
     "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "other_error": "Some other error occurred. See the logs"
+      "cannot_connect": "Cannot connect to WetterOnline.",
+      "invalid_location": "No valid WetterOnline weather data was found for this location."
+    },
+    "abort": {
+      "already_configured": "This WetterOnline location is already configured.",
+      "unique_id_mismatch": "The selected location does not match the configured location.",
+      "reconfigure_successful": "The WetterOnline location was updated."
+    }
+  },
+  "entity": {
+    "binary_sensor": {"weather_warning": {"name": "Weather warning"}},
+    "camera": {
+      "weather_radar": {"name": "Weather radar"},
+      "weather_radar_animation": {"name": "Weather radar animation"}
+    },
+    "sensor": {
+      "condition": {"name": "Condition"},
+      "weather_symbol": {"name": "Weather symbol"},
+      "temperature": {"name": "Temperature"},
+      "apparent_temperature": {"name": "Apparent temperature"},
+      "dew_point": {"name": "Dew point"},
+      "humidity": {"name": "Humidity"},
+      "pressure": {"name": "Pressure"},
+      "pressure_tendency": {"name": "Pressure tendency"},
+      "wind_speed": {"name": "Wind speed"},
+      "wind_gust": {"name": "Wind gust"},
+      "wind_bearing": {"name": "Wind bearing"},
+      "visibility": {"name": "Visibility"},
+      "precipitation_type": {"name": "Precipitation type"},
+      "precipitation_probability": {"name": "Precipitation probability"},
+      "uv_index": {"name": "UV index"},
+      "solar_elevation": {"name": "Solar elevation"},
+      "smog_level": {"name": "Smog level"},
+      "convection_probability": {"name": "Thunderstorm probability"},
+      "sunshine_duration": {"name": "Sunshine duration"},
+      "warning_count": {"name": "Warning count"},
+      "forecast_text": {"name": "Forecast text"},
+      "editorial": {"name": "Editorial notification"},
+      "pollen_ambrosia": {"name": "Pollen Ambrosia"},
+      "pollen_ampfer": {"name": "Pollen dock"},
+      "pollen_beifuss": {"name": "Pollen mugwort"},
+      "pollen_birke": {"name": "Pollen birch"},
+      "pollen_buche": {"name": "Pollen beech"},
+      "pollen_eiche": {"name": "Pollen oak"},
+      "pollen_erle": {"name": "Pollen alder"},
+      "pollen_esche": {"name": "Pollen ash"},
+      "pollen_graeser": {"name": "Pollen grasses"},
+      "pollen_pappel": {"name": "Pollen poplar"},
+      "pollen_roggen": {"name": "Pollen rye"},
+      "pollen_ulme": {"name": "Pollen elm"},
+      "pollen_wegerich": {"name": "Pollen plantain"},
+      "pollen_weide": {"name": "Pollen willow"},
+      "sunrise": {"name": "Sunrise"},
+      "sunset": {"name": "Sunset"},
+      "day_length": {"name": "Day length"},
+      "moonrise": {"name": "Moonrise"},
+      "moonset": {"name": "Moonset"},
+      "moon_age": {"name": "Moon age"},
+      "water_temperature": {"name": "Water temperature"},
+      "water_air_temperature": {"name": "Water location air temperature"},
+      "water_uv_index": {"name": "Water location UV index"},
+      "water_wind_speed": {"name": "Water location wind speed"},
+      "water_wind_gust": {"name": "Water location wind gust"},
+      "water_wind_bearing": {"name": "Water location wind bearing"}
     }
   }
 }
